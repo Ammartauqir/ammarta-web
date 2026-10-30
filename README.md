@@ -37,32 +37,12 @@ Site: `http://localhost:3000` — talks to `localhost:5000` automatically in dev
 
 More detail: [frontend/LOCAL_SETUP.md](frontend/LOCAL_SETUP.md).
 
-## Production deploy notes
+## Production
 
-Today Vercel/Render still build the legacy mirror repos (`ammarta-frontend` / `ammarta-backend`). After changing the monorepo, sync them:
+- **Frontend:** GitHub Actions deploys `frontend/` to Vercel on push to `main`
+- **Backend:** Render auto-deploys `backend/` from this repo (see [CUTOVER.md](CUTOVER.md) / [render.yaml](render.yaml))
 
-```bash
-chmod +x scripts/sync-deploy-mirrors.sh
-./scripts/sync-deploy-mirrors.sh
-```
-
-Optional: point both hosts at this monorepo with Root Directories — see [CUTOVER.md](CUTOVER.md).
-
-### Vercel (frontend)
-
-- Target Root Directory: `frontend`
-- Build: `npm run build` → `build`
-- Config: [`frontend/vercel.json`](frontend/vercel.json)
-
-### Render (backend)
-
-- Target Root Directory: `backend`
-- Build: `pip install -r requirements.txt`
-- Start: `gunicorn --chdir src app:app -c gunicorn_config.py`
-- Blueprint: [`render.yaml`](render.yaml)
-- Keep URL `ammarta-backend.onrender.com`
-
-Required env vars on Render: `EMAIL_USER`, `EMAIL_PASS`, and optionally `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`.
+Required Render env vars: `EMAIL_USER`, `EMAIL_PASS`, and optionally `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`.
 
 ## Layout
 
@@ -70,6 +50,7 @@ Required env vars on Render: `EMAIL_USER`, `EMAIL_PASS`, and optionally `STRAVA_
 ammarta-web/
   frontend/     # Vercel
   backend/      # Render
+  .github/workflows/deploy-frontend.yml
   render.yaml
   README.md
 ```

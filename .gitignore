@@ -1,6 +1,4 @@
-# Nested legacy / separate repos (not part of this monorepo)
-ammarta-frontend/
-ammarta-backend/
+# Separate chatbot clone (own git repo / HF Space)
 ammarta-chatbot/
 
 # OS / editor
