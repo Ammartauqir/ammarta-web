@@ -1,5 +1,5 @@
 timeout = 120  # 2 minutes
-workers = 4
+workers = 2
 worker_class = 'sync'
 keepalive = 5
 max_requests = 1000

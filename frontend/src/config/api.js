@@ -5,7 +5,7 @@ const isDevelopment = process.env.NODE_ENV === 'development' ||
                      window.location.hostname === '127.0.0.1';
 
 const API_BASE_URL = isDevelopment 
-  ? 'http://localhost:5000' 
+  ? 'http://localhost:5001' 
   : 'https://ammarta-backend.onrender.com';
 
 export const API_ENDPOINTS = {

@@ -395,7 +395,7 @@ const BlogPost = () => {
                       Welcome to Neuron Notes!
                     </h4>
                     <p className="text-zinc-600 dark:text-zinc-400">
-                      Your first dose of brain food is on its way.
+                      You’re on the interest list — I’ll email when the next note ships.
                     </p>
                   </div>
                 ) : (

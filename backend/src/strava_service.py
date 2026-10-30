@@ -1,148 +1,142 @@
+import json
 import os
 import requests
 import logging
 from datetime import datetime, timedelta
+from threading import Lock
 from dotenv import load_dotenv
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
 load_dotenv()
 
-# Strava API configuration
-STRAVA_CLIENT_ID = os.environ.get('STRAVA_CLIENT_ID')
-STRAVA_CLIENT_SECRET = os.environ.get('STRAVA_CLIENT_SECRET')
-STRAVA_REFRESH_TOKEN = os.environ.get('STRAVA_REFRESH_TOKEN')
+STRAVA_CLIENT_ID = os.environ.get("STRAVA_CLIENT_ID")
+STRAVA_CLIENT_SECRET = os.environ.get("STRAVA_CLIENT_SECRET")
+STRAVA_REFRESH_TOKEN = os.environ.get("STRAVA_REFRESH_TOKEN")
+REQUEST_TIMEOUT = 15
+CACHE_TTL_SECONDS = 21600
+CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+CACHE_FILE = os.path.join(CACHE_DIR, "strava_cache.json")
+PUBLIC_FIELDS = (
+    "id",
+    "name",
+    "type",
+    "distance",
+    "moving_time",
+    "elapsed_time",
+    "total_elevation_gain",
+    "start_date",
+    "average_speed",
+    "max_speed",
+)
 
-# Debug environment variables (without exposing values)
+_lock = Lock()
+
 logger.info("Environment variables status:")
 logger.info(f"STRAVA_CLIENT_ID present: {bool(STRAVA_CLIENT_ID)}")
 logger.info(f"STRAVA_CLIENT_SECRET present: {bool(STRAVA_CLIENT_SECRET)}")
 logger.info(f"STRAVA_REFRESH_TOKEN present: {bool(STRAVA_REFRESH_TOKEN)}")
 
-# Cache for Strava data
-strava_cache = {
-    'data': None,
-    'last_updated': None
-}
+
+def _read_disk_cache():
+    if not os.path.exists(CACHE_FILE):
+        return None
+    with open(CACHE_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _write_disk_cache(activities):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    payload = {
+        "last_updated": datetime.utcnow().isoformat() + "Z",
+        "data": activities,
+    }
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
+
 
 def get_strava_access_token():
-    """Get a new access token using the refresh token"""
-    try:
-        # Log the presence of required environment variables (without their values)
-        logger.info("Checking environment variables...")
-        if not all([STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, STRAVA_REFRESH_TOKEN]):
-            missing_vars = []
-            if not STRAVA_CLIENT_ID:
-                missing_vars.append('STRAVA_CLIENT_ID')
-            if not STRAVA_CLIENT_SECRET:
-                missing_vars.append('STRAVA_CLIENT_SECRET')
-            if not STRAVA_REFRESH_TOKEN:
-                missing_vars.append('STRAVA_REFRESH_TOKEN')
-            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+    if not all([STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, STRAVA_REFRESH_TOKEN]):
+        missing = [
+            name
+            for name, value in [
+                ("STRAVA_CLIENT_ID", STRAVA_CLIENT_ID),
+                ("STRAVA_CLIENT_SECRET", STRAVA_CLIENT_SECRET),
+                ("STRAVA_REFRESH_TOKEN", STRAVA_REFRESH_TOKEN),
+            ]
+            if not value
+        ]
+        raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
-        logger.info("Attempting to refresh Strava access token...")
-        response = requests.post(
-            'https://www.strava.com/oauth/token',
-            data={
-                'client_id': STRAVA_CLIENT_ID,
-                'client_secret': STRAVA_CLIENT_SECRET,
-                'refresh_token': STRAVA_REFRESH_TOKEN,
-                'grant_type': 'refresh_token'
-            }
-        )
-        
-        # Log the response status and headers (without sensitive data)
-        logger.info(f"Strava API response status: {response.status_code}")
-        logger.info(f"Strava API response headers: {dict(response.headers)}")
-        
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'access_token' not in data:
-            logger.error(f"Strava API response missing access_token: {data}")
-            raise KeyError("access_token not found in Strava API response")
-            
-        logger.info("Successfully obtained new access token")
-        return data['access_token']
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error requesting Strava access token: {str(e)}")
-        if hasattr(e.response, 'text'):
-            logger.error(f"Response content: {e.response.text}")
-        raise
-    except KeyError as e:
-        logger.error(f"Error parsing Strava API response: {str(e)}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error getting Strava access token: {str(e)}")
-        raise
+    response = requests.post(
+        "https://www.strava.com/oauth/token",
+        data={
+            "client_id": STRAVA_CLIENT_ID,
+            "client_secret": STRAVA_CLIENT_SECRET,
+            "refresh_token": STRAVA_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        },
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if "access_token" not in data:
+        raise KeyError("access_token not found in Strava API response")
+    return data["access_token"]
+
+
+def _public_activity(activity):
+    return {field: activity.get(field) for field in PUBLIC_FIELDS}
+
 
 def fetch_strava_activities():
-    """Fetch activities from Strava API"""
-    try:
-        access_token = get_strava_access_token()
-        
-        # Calculate date range (3 months ago)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=90)
-        
-        # Convert to Unix timestamp
-        after = int(start_date.timestamp())
-        
+    access_token = get_strava_access_token()
+    after = int((datetime.now() - timedelta(days=90)).timestamp())
+    headers = {"Authorization": f"Bearer {access_token}"}
+    page = 1
+    processed = []
+
+    while page <= 5:
         response = requests.get(
-            'https://www.strava.com/api/v3/athlete/activities',
-            headers={'Authorization': f'Bearer {access_token}'},
-            params={'after': after, 'per_page': 100}
+            "https://www.strava.com/api/v3/athlete/activities",
+            headers=headers,
+            params={"after": after, "per_page": 100, "page": page},
+            timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
-        
-        activities = response.json()
-        
-        # Process activities to include only relevant data
-        processed_activities = []
-        for activity in activities:
-            processed_activities.append({
-                'id': activity['id'],
-                'name': activity['name'],
-                'type': activity['type'],
-                'distance': activity['distance'],  # in meters
-                'moving_time': activity['moving_time'],  # in seconds
-                'elapsed_time': activity['elapsed_time'],  # in seconds
-                'total_elevation_gain': activity['total_elevation_gain'],  # in meters
-                'start_date': activity['start_date'],
-                'average_speed': activity['average_speed'],  # meters per second
-                'max_speed': activity['max_speed'],  # meters per second
-                'average_heartrate': activity.get('average_heartrate'),
-                'max_heartrate': activity.get('max_heartrate'),
-                'elev_high': activity.get('elev_high'),
-                'elev_low': activity.get('elev_low'),
-                'description': activity.get('description', ''),
-                'calories': activity.get('calories')
-            })
-        
-        return processed_activities
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching Strava activities: {str(e)}")
-        raise
-    except KeyError as e:
-        logger.error(f"Error processing Strava activity data: {str(e)}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error fetching Strava activities: {str(e)}")
-        raise
+        batch = response.json()
+        if not batch:
+            break
+        processed.extend(_public_activity(item) for item in batch)
+        if len(batch) < 100:
+            break
+        page += 1
+
+    return processed
+
 
 def get_cached_activities():
-    """Get activities from cache or fetch new data if cache is expired"""
-    if (strava_cache['last_updated'] is None or 
-        (datetime.now() - strava_cache['last_updated']).total_seconds() > 21600):  # 6 hours
-        
+    with _lock:
+        cached = _read_disk_cache()
+        fresh = False
+        if cached and cached.get("last_updated"):
+            try:
+                last = datetime.fromisoformat(cached["last_updated"].replace("Z", ""))
+                fresh = (datetime.utcnow() - last).total_seconds() <= CACHE_TTL_SECONDS
+            except ValueError:
+                fresh = False
+
+        if fresh:
+            return cached["data"]
+
         try:
             activities = fetch_strava_activities()
-            strava_cache['data'] = activities
-            strava_cache['last_updated'] = datetime.now()
+            _write_disk_cache(activities)
+            return activities
         except Exception as e:
-            raise e
-    
-    return strava_cache['data']
+            logger.error(f"Strava refresh failed: {e}")
+            if cached and cached.get("data") is not None:
+                logger.warning("Serving stale Strava cache after refresh failure")
+                return cached["data"]
+            raise

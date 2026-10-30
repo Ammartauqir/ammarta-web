@@ -31,7 +31,8 @@ Fill `.env` (`EMAIL_USER`, `EMAIL_PASS`, optional Strava keys).
 python src/app.py
 ```
 
-API: `http://localhost:5000` — health: `/api/info`
+API: `http://localhost:5001` — health: `/api/info`  
+(macOS often occupies port 5000 via AirPlay Receiver.)
 
 ## 3. Frontend (React)
 
@@ -47,7 +48,7 @@ Site: `http://localhost:3000` — uses `http://localhost:5000` automatically in 
 
 ## Verify
 
-1. `http://localhost:5000/api/info` returns a JSON message
+1. `http://localhost:5001/api/info` returns a JSON message
 2. Frontend loads on port 3000
 3. Contact / subscribe / sandbox talk to the local API
 

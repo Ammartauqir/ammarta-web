@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import API_ENDPOINTS from "../config/api";
@@ -8,6 +8,22 @@ const BlogPage = () => {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const closeButtonRef = useRef(null);
+  const previouslyFocused = useRef(null);
+
+  useEffect(() => {
+    if (!isModalOpen) return undefined;
+    previouslyFocused.current = document.activeElement;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setIsModalOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused.current?.focus?.();
+    };
+  }, [isModalOpen]);
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -109,6 +125,7 @@ const BlogPage = () => {
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
               onClick={() => setIsModalOpen(false)}
+              role="presentation"
             >
               <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
@@ -116,12 +133,18 @@ const BlogPage = () => {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="bg-white dark:bg-zinc-800 rounded-lg p-6 max-w-md w-full"
                 onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="subscribe-title"
               >
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-zinc-900 dark:text-white">
-                    Subscribe to Neuron Notes
+                  <h3 id="subscribe-title" className="text-xl font-semibold text-zinc-900 dark:text-white">
+                    Join the Neuron Notes interest list
                   </h3>
                   <button
+                    ref={closeButtonRef}
+                    type="button"
+                    aria-label="Close subscription dialog"
                     onClick={() => setIsModalOpen(false)}
                     className="text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                   >
@@ -142,7 +165,7 @@ const BlogPage = () => {
                       Welcome to Neuron Notes!
                     </h4>
                     <p className="text-zinc-600 dark:text-zinc-400">
-                      Your first dose of brain food is on its way.
+                      You’re on the interest list — I’ll email when the next note ships.
                     </p>
                   </div>
                 ) : (

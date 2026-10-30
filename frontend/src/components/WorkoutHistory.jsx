@@ -9,8 +9,8 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
 import { API_ENDPOINTS } from '../config/api';
+import { buildWorkoutChartData } from '../utils/workoutChart';
 
 const WorkoutHistory = () => {
   const [activities, setActivities] = useState([]);
@@ -47,27 +47,13 @@ const WorkoutHistory = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const formatDistance = (meters) => {
-    return (meters / 1000).toFixed(2);
-  };
-
   const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
 
-  const formatSpeed = (mps) => {
-    return (mps * 3.6).toFixed(2); // Convert m/s to km/h
-  };
-
-  const chartData = activities.map(activity => ({
-    date: format(parseISO(activity.start_date), 'MMM dd'),
-    distance: formatDistance(activity.distance),
-    duration: activity.moving_time / 60, // Convert to minutes
-    speed: formatSpeed(activity.average_speed),
-    ...activity
-  }));
+  const chartData = buildWorkoutChartData(activities);
 
   if (loading) {
     return (
@@ -125,7 +111,7 @@ const WorkoutHistory = () => {
             <Line
               yAxisId="left"
               type="monotone"
-              dataKey="distance"
+              dataKey="distanceKm"
               stroke="#8884d8"
               name="Distance (km)"
               activeDot={{ r: 8 }}
@@ -133,7 +119,7 @@ const WorkoutHistory = () => {
             <Line
               yAxisId="right"
               type="monotone"
-              dataKey="speed"
+              dataKey="speedKmh"
               stroke="#82ca9d"
               name="Speed (km/h)"
             />
@@ -150,7 +136,7 @@ const WorkoutHistory = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Distance</p>
               <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.distance} km
+                {selectedActivity.distanceKm} km
               </p>
             </div>
             <div>
@@ -162,22 +148,16 @@ const WorkoutHistory = () => {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Avg Speed</p>
               <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.speed} km/h
+                {selectedActivity.speedKmh} km/h
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Elevation Gain</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Type</p>
               <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.total_elevation_gain} m
+                {selectedActivity.type}
               </p>
             </div>
           </div>
-          {selectedActivity.description && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Description</p>
-              <p className="text-gray-900 dark:text-white">{selectedActivity.description}</p>
-            </div>
-          )}
         </div>
       )}
     </div>

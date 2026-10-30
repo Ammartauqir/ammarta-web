@@ -5,119 +5,138 @@ from flask_mail import Mail, Message
 from dotenv import load_dotenv
 from datetime import datetime
 from strava_service import get_cached_activities
+from validation import validate_contact, validate_subscribe, escape_fields
+from rate_limit import is_rate_limited
+from subscribers import add_subscriber
 import logging
-
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024
+
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "https://www.ammarta.com",
+                "https://ammarta.com",
+                "https://ammarta-frontend.vercel.app",
+            ]
+        }
+    },
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.getenv("EMAIL_USER")
+app.config["MAIL_PASSWORD"] = os.getenv("EMAIL_PASS")
+
+mail = Mail(app)
 
 
 @app.route("/api/info")
 def get_info():
     return jsonify({"message": "Hello, World! from Flask backend"})
 
-# Email configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.getenv('EMAIL_USER')
-app.config['MAIL_PASSWORD'] = os.getenv('EMAIL_PASS')
 
-mail = Mail(app)
-
-
-@app.route('/api/subscribe', methods=['POST'])
+@app.route("/api/subscribe", methods=["POST"])
 def subscribe():
+    client = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if is_rate_limited(f"subscribe:{client}", limit=5, window_seconds=60):
+        return jsonify({"message": "Too many requests. Please try again later."}), 429
+
+    data = request.get_json(silent=True)
     try:
-        data = request.get_json()
-        email = data.get('email')
+        fields = validate_subscribe(data)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
 
-        if not email:
-            return jsonify({'message': 'Email is required'}), 400
+    email = fields["email"]
+    is_new = add_subscriber(email)
+    safe = escape_fields({"email": email})
 
-        # Send notification email
+    try:
         msg = Message(
-            'New Neuron Notes Subscriber! 🎉',
-            sender=os.getenv('EMAIL_USER'),
-            recipients=[os.getenv('EMAIL_USER')]  # Send to yourself
+            "Neuron Notes interest list signup",
+            sender=os.getenv("EMAIL_USER"),
+            recipients=[os.getenv("EMAIL_USER")],
         )
-        
+        status = "new" if is_new else "already on list"
         msg.html = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #18181b;">New Subscriber Alert!</h2>
-            <p style="color: #3f3f46;">Someone just subscribed to Neuron Notes:</p>
+            <h2 style="color: #18181b;">Interest list signup ({status})</h2>
             <div style="background-color: #f4f4f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <p style="margin: 0; color: #18181b;"><strong>Email:</strong> {email}</p>
+                <p style="margin: 0; color: #18181b;"><strong>Email:</strong> {safe['email']}</p>
                 <p style="margin: 10px 0 0 0; color: #18181b;"><strong>Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
             </div>
-            <p style="color: #3f3f46;">Keep spreading the knowledge! 🚀</p>
         </div>
         """
-        print("SENDING EMAIL")
         mail.send(msg)
-        
-        return jsonify({'message': 'Subscription successful'}), 200
-
     except Exception as e:
-        print(f"Error processing subscription: {str(e)}")
-        return jsonify({'message': 'Error processing subscription'}), 500
+        logger.error(f"Error notifying subscribe (interest list still saved): {e}")
+
+    return jsonify({"message": "Subscription successful", "new": is_new}), 200
 
 
-@app.route('/api/contact', methods=['POST'])
+@app.route("/api/contact", methods=["POST"])
 def contact():
+    client = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if is_rate_limited(f"contact:{client}", limit=5, window_seconds=60):
+        return jsonify({"message": "Too many requests. Please try again later."}), 429
+
+    data = request.get_json(silent=True)
     try:
-        data = request.get_json()
-        name = data.get('name')
-        email = data.get('email')
-        subject = data.get('subject')
-        message = data.get('message')
+        fields = validate_contact(data)
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
 
-        # Create email message
+    safe = escape_fields(fields)
+
+    try:
         msg = Message(
-            subject=f'AmmarTa Contact Form: {subject}',
-            sender=app.config['MAIL_USERNAME'],
-            recipients=['ammar.tauqir2@gmail.com']
+            subject=f"AmmarTa Contact Form: {safe['subject']}",
+            sender=app.config["MAIL_USERNAME"],
+            recipients=["ammar.tauqir2@gmail.com"],
+            reply_to=fields["email"],
         )
-
-        # Email body
-        msg.html = f'''
+        msg.html = f"""
             <h2>New Contact Form Submission</h2>
-            <p><strong>Name:</strong> {name}</p>
-            <p><strong>Email:</strong> {email}</p>
-            <p><strong>Subject:</strong> {subject}</p>
+            <p><strong>Name:</strong> {safe['name']}</p>
+            <p><strong>Email:</strong> {safe['email']}</p>
+            <p><strong>Subject:</strong> {safe['subject']}</p>
             <p><strong>Message:</strong></p>
-            <p>{message}</p>
-        '''
-
-        # Send email
-        print("SENDING EMAIL")
+            <p>{safe['message']}</p>
+        """
         mail.send(msg)
-        return jsonify({'message': 'Email sent successfully'}), 200
-
+        return jsonify({"message": "Email sent successfully"}), 200
     except Exception as e:
-        print(f'Error sending email: {str(e)}')
-        return jsonify({'message': 'Failed to send email'}), 500
+        logger.error(f"Error sending email: {e}")
+        return jsonify({"message": "Failed to send email"}), 500
 
 
-@app.route('/api/strava/activities')
+@app.route("/api/strava/activities")
 def get_strava_activities():
     try:
         activities = get_cached_activities()
         return jsonify(activities)
     except Exception as e:
-        logger.error(f"Error in /api/strava/activities endpoint: {str(e)}")
-        return jsonify({
-            "error": "Failed to fetch activities",
-            "details": str(e)
-        }), 500
+        logger.error(f"Error in /api/strava/activities endpoint: {e}")
+        return jsonify(
+            {
+                "error": "Failed to fetch activities",
+                "details": str(e),
+            }
+        ), 500
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-
+    port = int(os.environ.get("PORT", 5001))
+    app.run(host="0.0.0.0", port=port)

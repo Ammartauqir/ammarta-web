@@ -3,3 +3,5 @@ __pycache__
 .venv
 /venv
 .env
+data/subscribers.json
+data/strava_cache.json

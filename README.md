@@ -23,7 +23,7 @@ cp .env.example .env       # then fill in values
 python src/app.py
 ```
 
-API: `http://localhost:5000` (health: `/api/info`)
+API: `http://localhost:5001` (health: `/api/info`; macOS often blocks 5000)
 
 ### Frontend
 
