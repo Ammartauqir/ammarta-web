@@ -8,22 +8,16 @@
 - Render still builds [ammarta-backend](https://github.com/Ammartauqir/ammarta-backend) (deploy mirror of `backend/`)
 - Chatbot unchanged on Hugging Face
 
-## Vercel auto-deploy (one manual step left)
+## Vercel auto-deploy
 
-Git connect failed because the Vercel GitHub App does not have access to `ammarta-web` yet.
+Native `vercel git connect` fails (Vercel’s GitHub integration returns 401).  
+Auto-deploy is handled by GitHub Actions instead:
 
-1. GitHub → Settings → Applications → **Vercel** → Repository access → add `ammarta-web`
-2. Then run:
+- Workflow: [`.github/workflows/deploy-frontend.yml`](.github/workflows/deploy-frontend.yml)
+- Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- Triggers on pushes to `main` that touch `frontend/**` (or manual `workflow_dispatch`)
 
-```bash
-vercel git connect https://github.com/Ammartauqir/ammarta-web.git --yes --project ammarta-frontend
-```
-
-Until then, ship frontend with:
-
-```bash
-vercel deploy --prod
-```
+Optional later: reconnect GitHub under Vercel → Account Settings → Login Connections, then `vercel git connect`.
 
 Backend mirror sync (Render) still works via:
 
