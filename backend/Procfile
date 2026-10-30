@@ -1,0 +1,1 @@
+web: gunicorn --chdir src app:app -c gunicorn_config.py
