@@ -9,10 +9,11 @@ ammarta-chatbot/
 .vscode/
 *.swp
 
-# Env / secrets
+# Env / secrets / Vercel local link
 .env
 .env.*
 !.env.example
+.vercel
 
 # Python
 __pycache__/
