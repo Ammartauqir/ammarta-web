@@ -4,7 +4,6 @@ import os
 from flask_mail import Mail, Message
 from dotenv import load_dotenv
 from datetime import datetime
-from strava_service import get_cached_activities
 from validation import validate_contact, validate_subscribe, escape_fields
 from rate_limit import is_rate_limited
 from subscribers import add_subscriber
@@ -120,21 +119,6 @@ def contact():
     except Exception as e:
         logger.error(f"Error sending email: {e}")
         return jsonify({"message": "Failed to send email"}), 500
-
-
-@app.route("/api/strava/activities")
-def get_strava_activities():
-    try:
-        activities = get_cached_activities()
-        return jsonify(activities)
-    except Exception as e:
-        logger.error(f"Error in /api/strava/activities endpoint: {e}")
-        return jsonify(
-            {
-                "error": "Failed to fetch activities",
-                "details": str(e),
-            }
-        ), 500
 
 
 if __name__ == "__main__":

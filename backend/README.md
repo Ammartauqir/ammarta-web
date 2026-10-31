@@ -1,6 +1,6 @@
 # Portfolio Backend
 
-Flask API for the portfolio site: contact form, newsletter subscribe, and Strava activities.
+Flask API for the portfolio site: contact form and newsletter subscribe.
 
 Deployed on Render as `ammarta-backend.onrender.com` (monorepo Root Directory: `backend`).
 
@@ -21,7 +21,6 @@ python src/app.py
 | GET | `/api/info` | Health check |
 | POST | `/api/contact` | Contact form |
 | POST | `/api/subscribe` | Neuron Notes subscribe |
-| GET | `/api/strava/activities` | Cached Strava activities |
 
 ## Env vars
 

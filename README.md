@@ -42,7 +42,7 @@ More detail: [frontend/LOCAL_SETUP.md](frontend/LOCAL_SETUP.md).
 - **Frontend:** GitHub Actions deploys `frontend/` to Vercel on push to `main`
 - **Backend:** Render auto-deploys `backend/` from this repo (see [CUTOVER.md](CUTOVER.md) / [render.yaml](render.yaml))
 
-Required Render env vars: `EMAIL_USER`, `EMAIL_PASS`, and optionally `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REFRESH_TOKEN`.
+Required Render env vars: `EMAIL_USER`, `EMAIL_PASS`.
 
 ## Layout
 

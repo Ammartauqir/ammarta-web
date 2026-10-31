@@ -11,7 +11,6 @@ const API_BASE_URL = isDevelopment
 export const API_ENDPOINTS = {
   BASE_URL: API_BASE_URL,
   SUBSCRIBE: `${API_BASE_URL}/api/subscribe`,
-  STRAVA_ACTIVITIES: `${API_BASE_URL}/api/strava/activities`,
   CONTACT: `${API_BASE_URL}/api/contact`,
   INFO: `${API_BASE_URL}/api/info`,
 };

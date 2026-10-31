@@ -1,167 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer
-} from 'recharts';
-import { API_ENDPOINTS } from '../config/api';
-import { buildWorkoutChartData } from '../utils/workoutChart';
+import React from 'react';
+
+// Public Strava profile — update if your athlete URL changes
+const STRAVA_PROFILE_URL = 'https://www.strava.com/athletes/ammar_tauqir';
 
 const WorkoutHistory = () => {
-  const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedActivity, setSelectedActivity] = useState(null);
-
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        console.log('Fetching activities from Strava...');
-        const response = await fetch(API_ENDPOINTS.STRAVA_ACTIVITIES);
-        console.log('Response status:', response.status);
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Failed to fetch activities: ${response.status} ${response.statusText} ${JSON.stringify(errorData)}`);
-        }
-        
-        const data = await response.json();
-        console.log('Received activities:', data);
-        setActivities(data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching activities:', err);
-        setError(err.message);
-        setLoading(false);
-      }
-    };
-
-    fetchActivities();
-    // Refresh data every 6 hours
-    const interval = setInterval(fetchActivities, 6 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatDuration = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  };
-
-  const chartData = buildWorkoutChartData(activities);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-          Workout History
-        </h2>
-        <div className="text-red-500 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <p className="font-semibold mb-2">Error loading workout data</p>
-          <p className="text-sm">{error}</p>
-          <p className="text-sm mt-2">
-            This could be because:
-            <ul className="list-disc list-inside mt-1">
-              <li>The Strava API integration is not set up yet</li>
-              <li>The backend service is not running</li>
-              <li>There might be an issue with the API credentials</li>
-            </ul>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+      <h2 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">
         Workout History
       </h2>
-      
-      <div className="h-[400px] mb-8">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={chartData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            onClick={(data) => {
-              if (data && data.activePayload) {
-                setSelectedActivity(data.activePayload[0].payload);
-              }
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
-            <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-            <Tooltip />
-            <Legend />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="distanceKm"
-              stroke="#8884d8"
-              name="Distance (km)"
-              activeDot={{ r: 8 }}
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="speedKmh"
-              stroke="#82ca9d"
-              name="Speed (km/h)"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {selectedActivity && (
-        <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
-            {selectedActivity.name}
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Distance</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.distanceKm} km
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Duration</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {formatDuration(selectedActivity.moving_time)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg Speed</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.speedKmh} km/h
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Type</p>
-              <p className="text-lg font-medium text-gray-900 dark:text-white">
-                {selectedActivity.type}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-xl">
+        I log runs and rides on Strava. Open my profile for the latest activities.
+      </p>
+      <a
+        href={STRAVA_PROFILE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-transparent border border-gray-900 dark:border-white text-gray-900 dark:text-white px-6 py-2 rounded hover:bg-gray-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition duration-300"
+      >
+        View on Strava
+        <span aria-hidden="true">→</span>
+      </a>
     </div>
   );
 };
 
-export default WorkoutHistory; 
+export default WorkoutHistory;

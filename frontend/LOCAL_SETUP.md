@@ -25,7 +25,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Fill `.env` (`EMAIL_USER`, `EMAIL_PASS`, optional Strava keys).
+Fill `.env` (`EMAIL_USER`, `EMAIL_PASS`).
 
 ```bash
 python src/app.py
