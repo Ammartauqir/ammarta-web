@@ -1,14 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#0b1722" />
+    <meta
+      property="og:title"
+      content="Ammar Tauqir — Software, Robotics &amp; AI"
+    />
+    <meta
+      property="og:description"
+      content="Exploring perception, robotics, and useful AI. Selected projects, research interests, and notes from the workbench."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.ammarta.com/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <script>
+      try {
+        if (localStorage.getItem("theme") !== "light") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      } catch (_) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
     <meta
       name="description"
-      content="Muhammad Ammar Tauqir - Software Engineer and Tech Creator"
+      content="Ammar Tauqir — software engineer exploring perception, robotics, and useful AI. Projects, research interests, and engineering notes."
     />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <!--

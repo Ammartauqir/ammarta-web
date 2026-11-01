@@ -1,39 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-
-const ThemeContext = createContext({
-  isDark: false,
-  toggleTheme: () => {},
-});
-
+const ThemeContext = createContext({ isDark: true, toggleTheme: () => {} });
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    if (localStorage.theme === "dark") return true;
-    if (!("theme" in localStorage)) {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    try {
+      return localStorage.getItem("theme") !== "light";
+    } catch {
+      return true;
     }
-    return false;
   });
-
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add("dark");
-      localStorage.theme = "dark";
-    } else {
-      root.classList.remove("dark");
-      localStorage.theme = "light";
+    document.documentElement.classList.toggle("dark", isDark);
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+    try {
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+    } catch {
+      /* Storage can be disabled. */
     }
   }, [isDark]);
-
-  const toggleTheme = () => setIsDark((prev) => !prev);
-
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ isDark, toggleTheme: () => setIsDark((value) => !value) }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 }
-
-export function useTheme() {
-  return useContext(ThemeContext);
-}
+export const useTheme = () => useContext(ThemeContext);

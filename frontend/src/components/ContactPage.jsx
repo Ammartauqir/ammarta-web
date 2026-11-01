@@ -1,195 +1,178 @@
-import React, { useState } from "react";
-import { API_ENDPOINTS } from '../config/api';
+import React, { useRef, useState } from "react";
+import { API_ENDPOINTS } from "../config/api";
+import { profile } from "../data/portfolio";
+import Icon from "./Icon";
 
-const ContactPage = () => {
-  const [formData, setFormData] = useState({
+export default function ContactPage() {
+  const [form, setForm] = useState({
     name: "",
     email: "",
     subject: "",
     message: "",
   });
   const [status, setStatus] = useState({ type: "", message: "" });
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e) => {
+  const sending = useRef(false);
+  const submit = async (e) => {
     e.preventDefault();
-    setStatus({ type: "loading", message: "Sending message..." });
-
+    if (sending.current) return;
+    sending.current = true;
+    setStatus({ type: "loading", message: "Sending your message…" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
     try {
       const response = await fetch(API_ENDPOINTS.CONTACT, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+        signal: controller.signal,
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setStatus({
-          type: "success",
-          message: "Message sent successfully! I'll get back to you soon.",
-        });
-        setFormData({ name: "", email: "", subject: "", message: "" });
-      } else {
-        throw new Error(data.message || "Something went wrong");
-      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok)
+        throw new Error(
+          data.message ||
+            "Your message could not be sent. Please try email instead.",
+        );
+      setStatus({
+        type: "success",
+        message: "Message sent. Thank you for getting in touch!",
+      });
+      setForm({ name: "", email: "", subject: "", message: "" });
     } catch (error) {
       setStatus({
         type: "error",
-        message: error.message || "Failed to send message. Please try again.",
+        message:
+          error.name === "AbortError"
+            ? "This is taking longer than expected. Please contact me by email; delivery could not be confirmed."
+            : error.message === "Failed to fetch"
+              ? "The contact service is unavailable. Please email me directly."
+              : error.message,
       });
+    } finally {
+      clearTimeout(timeout);
+      sending.current = false;
     }
   };
-
   return (
-    <div className="min-h-screen bg-zinc-200 dark:bg-zinc-950 pt-24 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-center text-zinc-800 dark:text-white">
-          Contact Me
-        </h1>
-
-        <div className="bg-white dark:bg-zinc-800 rounded-2xl shadow-md p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+    <div className="page-shell contact-page">
+      <div className="container">
+        <div className="page-heading">
+          <span className="eyebrow">CONTACT / START A CONVERSATION</span>
+          <h1>
+            Something on your mind?
+            <br />
+            <em>I’m all ears.</em>
+          </h1>
+          <p>
+            A research question, a collaboration, or an interesting engineering
+            challenge. Tell me a little about it.
+          </p>
+        </div>
+        <div className="contact-layout">
+          <aside className="contact-aside">
+            <span className="small-label">DIRECT IS GOOD, TOO.</span>
+            <a href={`mailto:${profile.email}`} className="contact-email">
+              {profile.email}
+              <Icon name="diagonal" size={18} />
+            </a>
+            <p>
+              <Icon name="pin" size={16} />
+              {profile.location}
+            </p>
+            <div className="contact-socials">
+              <a
+                href={profile.github}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="Your name"
-              />
+                GitHub <Icon name="diagonal" size={14} />
+              </a>
+              <a
+                href={profile.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                LinkedIn <Icon name="diagonal" size={14} />
+              </a>
             </div>
-
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="your.email@example.com"
-              />
+            <div className="contact-note">
+              <span className="small-label">A USEFUL FIRST MESSAGE</span>
+              <p>
+                Share what you’re working on, where our interests overlap, and
+                what you have in mind.
+              </p>
             </div>
-
-            {/* Subject Field */}
-            <div>
-              <label
-                htmlFor="subject"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-              >
-                Subject
-              </label>
+          </aside>
+          <form className="contact-form" onSubmit={submit}>
+            <div className="form-row">
+              {[
+                ["name", "Your name", "text", 100],
+                ["email", "Email address", "email", 254],
+              ].map(([name, label, type, max]) => (
+                <label key={name}>
+                  {label}
+                  <input
+                    name={name}
+                    type={type}
+                    maxLength={max}
+                    autoComplete={name}
+                    value={form[name]}
+                    required
+                    onChange={(e) =>
+                      setForm({ ...form, [name]: e.target.value })
+                    }
+                    placeholder={
+                      name === "name"
+                        ? "How should I address you?"
+                        : "you@example.com"
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <label>
+              What’s it about?
               <input
-                type="text"
-                id="subject"
                 name="subject"
-                value={formData.subject}
-                onChange={handleChange}
+                maxLength={200}
                 required
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="What is this regarding?"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                placeholder="Research, collaboration, or something else…"
               />
-            </div>
-
-            {/* Message Field */}
-            <div>
-              <label
-                htmlFor="message"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
-              >
-                Message
-              </label>
+            </label>
+            <label>
+              Your message
               <textarea
-                id="message"
                 name="message"
-                value={formData.message}
-                onChange={handleChange}
-                required
+                maxLength={5000}
                 rows="6"
-                className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none"
-                placeholder="Your message here..."
+                required
+                value={form.message}
+                onChange={(e) => setForm({ ...form, message: e.target.value })}
+                placeholder="Tell me a little more…"
               />
-            </div>
-
-            {/* Status Message */}
+            </label>
             {status.message && (
-              <div
-                className={`p-4 rounded-lg ${
-                  status.type === "success"
-                    ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
-                    : status.type === "error"
-                    ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
-                    : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                }`}
+              <p
+                className={`form-status status-${status.type}`}
+                role={status.type === "error" ? "alert" : "status"}
               >
                 {status.message}
-              </div>
+              </p>
             )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={status.type === "loading"}
-              className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3 rounded-lg font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {status.type === "loading" ? "Sending..." : "Send Message"}
-            </button>
-          </form>
-
-          {/* Additional Contact Information */}
-          <div className="mt-8 pt-8 border-t border-zinc-200 dark:border-zinc-700">
-            <h2 className="text-xl font-semibold mb-4 text-zinc-900 dark:text-white">
-              Other Ways to Reach Me
-            </h2>
-            <div className="space-y-3 text-zinc-700 dark:text-zinc-300">
-              <p>
-                <span className="font-medium">Email:</span>{" "}
-                <a
-                  href="mailto:ammar.tauqir2@gmail.com"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  ammar.tauqir2@gmail.com
-                </a>
-              </p>
-              <p>
-                <span className="font-medium">Phone:</span> +4917673209858
-              </p>
-              <p>
-                <span className="font-medium">Location:</span> Ingolstadt, Germany
-              </p>
+            <div className="form-submit-row">
+              <span>Your details are used to respond to your message.</span>
+              <button
+                className="button button-primary"
+                disabled={status.type === "loading"}
+              >
+                {status.type === "loading" ? "Sending…" : "Send message"}
+                <Icon name="diagonal" size={16} />
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
     </div>
   );
-};
-
-export default ContactPage; 
+}
